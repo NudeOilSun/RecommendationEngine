@@ -2,7 +2,6 @@
 using RecommendationEngine.Models;
 using System.Data;
 using System.Text;
-using System.Threading;
 
 namespace OpenAIExample
 {
@@ -16,6 +15,7 @@ namespace OpenAIExample
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {API_KEY}");
             client.DefaultRequestHeaders.Add("OpenAI-Beta", "assistants=v1");
             const string ASSISTANT_ID = ""; //chatbox assistant
+            //const string ASSISTANT_ID = ""; //more powerful assistant
 
             #region createAssistant
             //CREATES THE ASSISTANT
@@ -38,19 +38,14 @@ namespace OpenAIExample
             //var response = await client.PostAsync(endpoint, content);
             //var responseContent = await response.Content.ReadAsStringAsync();
 
-            //if (response.IsSuccessStatusCode)
-            //{
-            //    Console.WriteLine("Assistant created successfully!");
-            //    Console.WriteLine(responseContent);
-            //}
-            //else
+            //if (!response.IsSuccessStatusCode)
             //{
             //    Console.WriteLine($"Error: {response.StatusCode}");
             //    Console.WriteLine(responseContent);
             //}
 
             //assistantResponse assistantResponse = JsonConvert.DeserializeObject<assistantResponse>(responseContent);
-            //string assistantId = assistantResponse.id;
+            //string ASSISTANT_ID = assistantResponse.id;
 
             //Console.WriteLine($"Assistant ID {assistantResponse.id}");
 
@@ -65,11 +60,11 @@ namespace OpenAIExample
                 //content = "This is a new thread."
             };
 
-            var jsonThread = Newtonsoft.Json.JsonConvert.SerializeObject(threadRequest);
-            var contentThread = new StringContent(jsonThread, Encoding.UTF8, "application/json");
+            string jsonThread = Newtonsoft.Json.JsonConvert.SerializeObject(threadRequest);
+            StringContent contentThread = new StringContent(jsonThread, Encoding.UTF8, "application/json");
 
-            var responseThread = await client.PostAsync(threadEndpoint, contentThread);
-            var responseContentThread = await responseThread.Content.ReadAsStringAsync();
+            HttpResponseMessage responseThread = await client.PostAsync(threadEndpoint, contentThread);
+            string responseContentThread = await responseThread.Content.ReadAsStringAsync();
 
             if (responseThread.IsSuccessStatusCode)
             {
@@ -99,8 +94,8 @@ namespace OpenAIExample
                 await AddMessageFromUserToThreadAndCreateRun(client, ASSISTANT_ID, threadId, inputMessage);
 
                 Thread.Sleep(3000); //TODO make this smarter
-                                    
-                var reply = await GetLastMessage(threadId, client);
+
+                string reply = await GetLastMessage(threadId, client);
                 Console.WriteLine(reply);
             }
 
@@ -109,12 +104,12 @@ namespace OpenAIExample
 
         private class threadResponse
         {
-            public string id { get;set; }
+            public string id { get; set; }
         }
 
         private class assistantResponse
         {
-            public string id { get;set; }
+            public string id { get; set; }
         }
 
         private static async Task AddMessageFromUserToThreadAndCreateRun(HttpClient client, string assistantId, string threadId, string input)
@@ -125,13 +120,13 @@ namespace OpenAIExample
                 content = input
             };
 
-            var jsonMessage = Newtonsoft.Json.JsonConvert.SerializeObject(message);
-            var contentMessage = new StringContent(jsonMessage, Encoding.UTF8, "application/json");
+            string jsonMessage = Newtonsoft.Json.JsonConvert.SerializeObject(message);
+            StringContent contentMessage = new StringContent(jsonMessage, Encoding.UTF8, "application/json");
 
             string addMessageEndpoint = $"https://api.openai.com/v1/threads/{threadId}/messages";
 
-            var responseMessage = await client.PostAsync(addMessageEndpoint, contentMessage);
-            var responseContentMessage = await responseMessage.Content.ReadAsStringAsync();
+            HttpResponseMessage responseMessage = await client.PostAsync(addMessageEndpoint, contentMessage);
+            string responseContentMessage = await responseMessage.Content.ReadAsStringAsync();
 
             if (responseMessage.IsSuccessStatusCode)
             {
@@ -158,12 +153,12 @@ namespace OpenAIExample
                 instructions = "Please provide a list of recommendations of activities and classes."
             };
 
-            var jsonRequest = Newtonsoft.Json.JsonConvert.SerializeObject(runRequestBody);
-            var contentForRun = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
+            string jsonRequest = Newtonsoft.Json.JsonConvert.SerializeObject(runRequestBody);
+            StringContent contentForRun = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
 
             // Send POST request to create and poll the run
-            var responseRun = await client.PostAsync(createAndPollRunEndpoint, contentForRun);
-            var responseContentRun = await responseRun.Content.ReadAsStringAsync();
+            HttpResponseMessage responseRun = await client.PostAsync(createAndPollRunEndpoint, contentForRun);
+            string responseContentRun = await responseRun.Content.ReadAsStringAsync();
 
             if (responseRun.IsSuccessStatusCode)
             {
@@ -186,12 +181,10 @@ namespace OpenAIExample
 
         private static async Task<string> GetLastMessage(string threadId, HttpClient client)
         {
-            Thread.Sleep(5000); //TODO make this smarter
-            //LIST THE MESSAGES
             string listMessagesEndpoint = $"https://api.openai.com/v1/threads/{threadId}/messages";
 
-            var responseFromGetMessages = await client.GetAsync(listMessagesEndpoint);
-            var responseContentFromGet = await responseFromGetMessages.Content.ReadAsStringAsync();
+            HttpResponseMessage responseFromGetMessages = await client.GetAsync(listMessagesEndpoint);
+            string responseContentFromGet = await responseFromGetMessages.Content.ReadAsStringAsync();
 
             if (responseFromGetMessages.IsSuccessStatusCode)
             {
@@ -205,11 +198,39 @@ namespace OpenAIExample
                 throw new Exception(responseContentFromGet);
             }
 
-            var messageResponse = JsonConvert.DeserializeObject<MessageResponse>(responseContentFromGet);
+            MessageResponse? messageResponse = JsonConvert.DeserializeObject<MessageResponse>(responseContentFromGet);
             string firstMessageId = messageResponse.first_id;
 
-            var reply = messageResponse.Data.Where(d => d.Id == firstMessageId).Select(d => d.Content[0].Text.Value).FirstOrDefault();
+            var returnedMessage = messageResponse.Data.FirstOrDefault(d => d.Id == firstMessageId);
+
+            while (returnedMessage.Content.Count == 0)
+            {
+                returnedMessage = await GetMessageReturned(threadId, client, firstMessageId);
+            }
+
+            string? reply = returnedMessage.Content[0].Text.Value;
+
             return reply;
+        }
+
+        private static async Task<Message?> GetMessageReturned(string threadId, HttpClient client, string messageId)
+        {
+            string listMessagesEndpoint = $"https://api.openai.com/v1/threads/{threadId}/messages";
+
+            HttpResponseMessage responseFromGetMessages = await client.GetAsync(listMessagesEndpoint);
+            string responseContentFromGet = await responseFromGetMessages.Content.ReadAsStringAsync();
+
+            if (!responseFromGetMessages.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"Error: {responseFromGetMessages.StatusCode}");
+                Console.WriteLine(responseContentFromGet);
+                throw new Exception(responseContentFromGet);
+            }
+
+            MessageResponse? messageResponse = JsonConvert.DeserializeObject<MessageResponse>(responseContentFromGet);
+            Message? returnedMessage = messageResponse.Data.FirstOrDefault(d => d.Id == messageId);
+
+            return returnedMessage;
         }
     }
 }
