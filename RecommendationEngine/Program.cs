@@ -15,8 +15,7 @@ namespace OpenAIExample
             HttpClient client = new HttpClient();
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {API_KEY}");
             client.DefaultRequestHeaders.Add("OpenAI-Beta", "assistants=v1");
-            const string ASSISTANT_ID = "asst_DMfmAelh3QuoFRuQUh036RWY"; //chatbox assistant
-            //const string ASSISTANT_ID = "asst_hIaablxIeippjl5eEd4TOUSX"; //more powerful assistant
+            const string ASSISTANT_ID = ""; //chatbox assistant
 
             #region createAssistant
             //CREATES THE ASSISTANT
