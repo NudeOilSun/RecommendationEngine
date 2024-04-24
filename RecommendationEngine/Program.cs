@@ -11,12 +11,12 @@ namespace OpenAIExample
         static async Task Main(string[] args)
         {
             //Setting up the request
-            const string API_KEY = "sk-proj-4Vfycvbjot2DbusqPYVoT3BlbkFJnbMRBAWflepFRyHkz3wz";
+            const string API_KEY = "";
             HttpClient client = new HttpClient();
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {API_KEY}");
             client.DefaultRequestHeaders.Add("OpenAI-Beta", "assistants=v1");
-            //const string ASSISTANT_ID = "asst_DMfmAelh3QuoFRuQUh036RWY";
-            const string ASSISTANT_ID = "asst_hIaablxIeippjl5eEd4TOUSX";
+            const string ASSISTANT_ID = "asst_DMfmAelh3QuoFRuQUh036RWY"; //chatbox assistant
+            //const string ASSISTANT_ID = "asst_hIaablxIeippjl5eEd4TOUSX"; //more powerful assistant
 
             #region createAssistant
             //CREATES THE ASSISTANT
@@ -74,8 +74,8 @@ namespace OpenAIExample
 
             if (responseThread.IsSuccessStatusCode)
             {
-                Console.WriteLine("Thread created successfully!");
-                Console.WriteLine(responseContentThread);
+                //Console.WriteLine("Thread created successfully!");
+                //Console.WriteLine(responseContentThread);
             }
             else
             {
@@ -86,7 +86,7 @@ namespace OpenAIExample
 
             threadResponse threadResponse = JsonConvert.DeserializeObject<threadResponse>(responseContentThread);
             string threadId = threadResponse.id;
-            Console.WriteLine($"Thread ID {threadId}");
+            //Console.WriteLine($"Thread ID {threadId}");
             #endregion
 
             //ADD MESSAGES TO THE THREAD
@@ -99,7 +99,7 @@ namespace OpenAIExample
                 inputMessage = Console.ReadLine();
                 await AddMessageFromUserToThreadAndCreateRun(client, ASSISTANT_ID, threadId, inputMessage);
 
-                Thread.Sleep(5000); //TODO make this smarter
+                Thread.Sleep(3000); //TODO make this smarter
                                     
                 var reply = await GetLastMessage(threadId, client);
                 Console.WriteLine(reply);
@@ -136,7 +136,7 @@ namespace OpenAIExample
 
             if (responseMessage.IsSuccessStatusCode)
             {
-                Console.WriteLine("Message added to thread successfully!");
+                //Console.WriteLine("Message added to thread successfully!");
                 //Console.WriteLine(responseContentMessage);
             }
             else
@@ -168,7 +168,7 @@ namespace OpenAIExample
 
             if (responseRun.IsSuccessStatusCode)
             {
-                Console.WriteLine("Run created successfully!");
+                //Console.WriteLine("Run created successfully!");
                 //Console.WriteLine(responseContentRun);
             }
             else
